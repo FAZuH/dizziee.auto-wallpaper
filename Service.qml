@@ -22,7 +22,7 @@ Item {
   property bool enabled: true
   property int intervalMinutes: 30
   property string mode: Schedule.DEFAULTS.mode
-  property int lastChangeEpoch: Schedule.DEFAULTS.lastChangeEpoch
+  property double lastChangeEpoch: Schedule.DEFAULTS.lastChangeEpoch
   property var cycle: []
   property int cycleIndex: 0
   property string cycleTheme: ""
@@ -33,7 +33,7 @@ Item {
   property var catalogPaths: []
   property var wallpaperList: []
   property string currentWallpaper: ""
-  property int nowEpoch: 0
+  property double nowEpoch: 0
 
   // Action state.
   property bool busy: false
