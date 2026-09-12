@@ -110,6 +110,16 @@ Item {
     root.wallpaperList = list
   }
 
+  // Panel grid badge click: flip one wallpaper's rotation membership by
+  // adding/removing its exact file name in the pattern config.
+  function toggleWallpaperSelection(path) {
+    var patch = Schedule.toggleSelection(root.includePatterns, root.excludePatterns, path)
+    root.saveConfig(patch)
+    var on = Schedule.inRotation(path, patch.includePatterns, patch.excludePatterns)
+    root.lastAction = (on ? "Included in rotation: " : "Skipped in rotation: ")
+      + Schedule.wallpaperName(path)
+  }
+
   function saveConfig(patch) {
     var config = root.currentConfig()
     for (var key in patch) config[key] = patch[key]
@@ -163,9 +173,11 @@ Item {
   }
 
   function statusText() {
+    var skipped = root.wallpaperList.length - root.catalogPaths.length
     return "Theme: " + root.currentThemeDisplay
       + " · " + root.catalogPaths.length + " wallpaper"
-      + (root.catalogPaths.length === 1 ? "" : "s") + " · "
+      + (root.catalogPaths.length === 1 ? "" : "s")
+      + (skipped > 0 ? " (" + skipped + " skipped)" : "") + " · "
       + Schedule.modeLabel(root.mode)
   }
 

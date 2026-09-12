@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs"
 const src = readFileSync(new URL("./Schedule.js", import.meta.url), "utf8")
   .replace(/^\.pragma library\s*/, "")
 const S = new Function(src +
-  "\nreturn { DEFAULTS, normalize, filterCatalog, parseWallpaperCatalog, inRotation }")()
+  "\nreturn { DEFAULTS, normalize, filterCatalog, parseWallpaperCatalog, inRotation, toggleSelection }")()
 
 const rows = (paths) => paths.map((p) => ({ path: p, thumb: p + ".t" }))
 const kept = (entries) => entries.map((e) => e.path.split("/").pop())
@@ -47,5 +47,18 @@ check("inRotation: exclude wins",
   [false, true])
 check("inRotation: include filter",
   S.inRotation("/t/city.png", ["*lake*"], []), false)
+let sel = S.toggleSelection([], [], "/t/Nordic-Lake.jpg")
+check("toggle on -> exact exclude",
+  [sel.excludePatterns, S.inRotation("/t/Nordic-Lake.jpg", [], sel.excludePatterns)],
+  [["Nordic-Lake.jpg"], false])
+sel = S.toggleSelection([], sel.excludePatterns, "/t/Nordic-Lake.jpg")
+check("toggle off -> exclude removed", sel.excludePatterns, [])
+sel = S.toggleSelection(["*lake*"], [], "/t/city.png")
+check("toggle on allow-listed file appends include",
+  [sel.includePatterns, S.inRotation("/t/city.png", sel.includePatterns, [])],
+  [["*lake*", "city.png"], true])
+check("toggle normalizes through config",
+  S.normalize({ includePatterns: sel.includePatterns }).includePatterns.length, 2)
+
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1) }
 console.log("all checks passed")

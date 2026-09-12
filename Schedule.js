@@ -126,6 +126,26 @@ function inRotation(path, includePatterns, excludePatterns) {
   return true
 }
 
+// Compute the pattern lists that result from toggling one wallpaper's
+// rotation membership, as clicked from the panel grid:
+// - in rotation -> add the exact file name to excludePatterns.
+// - excluded by an exact exclude entry -> remove that entry.
+// - filtered out by includePatterns -> add the exact file name to
+//   includePatterns (allow-lists only ever grow; prune them in config.json).
+function toggleSelection(includePatterns, excludePatterns, path) {
+  var name = String(path || "").replace(/\\/g, "/").split("/").pop()
+  var include = patternList(includePatterns)
+  var exclude = patternList(excludePatterns)
+  if (inRotation(name, include, exclude)) {
+    if (exclude.indexOf(name) === -1) exclude.push(name)
+  } else {
+    var at = exclude.indexOf(name)
+    if (at >= 0) exclude.splice(at, 1)
+    else if (include.indexOf(name) === -1) include.push(name)
+  }
+  return { includePatterns: include, excludePatterns: exclude }
+}
+
 // Fisher-Yates shuffle. `rng` is optional to support deterministic tests.
 function shuffle(values, rng) {
   var a = Array.isArray(values) ? values.slice() : []

@@ -153,10 +153,12 @@ Panel {
                   smooth: true
                 }
 
-                // Dim the non-current cells for contrast.
+                // Dim the non-current cells for contrast; skipped
+                // (not in rotation) cells get dimmed the hardest.
                 Rectangle {
                   anchors.fill: parent
-                  color: Util.alpha(root.foreground, cell.isCurrent ? 0 : 0.22)
+                  color: Util.alpha(root.foreground,
+                    cell.isCurrent ? 0 : (modelData.inRotation ? 0.22 : 0.55))
                 }
 
                 // Current border drawn ON TOP so the image can't hide it.
@@ -167,8 +169,32 @@ Panel {
                   border.width: cell.isCurrent ? 2 : 1
                 }
 
+                // Rotation membership badge (indicator only): clicks go
+                // through the cell MouseArea — Ctrl+click toggles it.
+                // Filled backgrounds so it reads over any wallpaper, light
+                // or dark.
+                Rectangle {
+                  x: 5
+                  y: 5
+                  width: 24
+                  height: 24
+                  radius: 12
+                  color: modelData.inRotation
+                    ? Color.accent : Qt.rgba(0.08, 0.08, 0.08, 0.78)
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: modelData.inRotation ? "✓" : "⊘"
+                    textFormat: Text.PlainText
+                    color: "#ffffff"
+                    font.family: root.fontFamily
+                    font.pixelSize: 14
+                  }
+                }
+
                 ToolTip.visible: cellMouse.containsMouse
                 ToolTip.text: modelData.name
+                  + (modelData.inRotation ? "" : " · not in rotation")
                 ToolTip.delay: 500
 
                 MouseArea {
@@ -176,7 +202,13 @@ Panel {
                   anchors.fill: parent
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
-                  onClicked: if (root.service) root.service.setWallpaper(modelData.path)
+                  onClicked: function(mouse) {
+                    if (!root.service) return
+                    if (mouse.modifiers & Qt.ControlModifier)
+                      root.service.toggleWallpaperSelection(modelData.path)
+                    else
+                      root.service.setWallpaper(modelData.path)
+                  }
                 }
               }
             }
@@ -184,7 +216,7 @@ Panel {
 
           Text {
             Layout.fillWidth: true
-            text: "Click a wallpaper to set it now. The current one is highlighted with a border."
+            text: "Click a wallpaper to set it now · Ctrl+click to include or skip it in the rotation. The current one is highlighted."
             textFormat: Text.PlainText
             color: root.dim
             font.family: root.fontFamily

@@ -64,7 +64,9 @@ Example:
 ```
 
 Both keys are optional — leave them out (or empty) to use every wallpaper the
-active theme ships.
+active theme ships. You can also pick wallpapers directly in the panel:
+Ctrl+click a tile (the badge shows its state) to include/skip it in the
+rotation, which writes the wallpaper's exact file name into these keys.
 
 ## How it works
 
