@@ -46,6 +46,25 @@ Configuration lives in `~/.config/omarchy/auto-wallpaper/config.json`.
 | `enabled` | boolean | true | Automatically cycle wallpapers |
 | `intervalMinutes` | integer | 30 | How often the wallpaper changes |
 | `mode` | string (`sequential`, `shuffle`) | `sequential` | Rotation order |
+| `includePatterns` | string array | `[]` | Only use wallpapers whose file name matches one of these globs |
+| `excludePatterns` | string array | `[]` | Never use wallpapers whose file name matches one of these globs |
+
+Include/exclude patterns are case-insensitive globs matched against the
+wallpaper's file name (not the full path), with `*` and `?` wildcards. Both
+lists apply to the preview grid and the rotation; `excludePatterns` wins over
+`includePatterns`.
+
+Example:
+
+```json
+{
+  "includePatterns": ["*mountain*", "lake-*.jpg"],
+  "excludePatterns": ["*draft*", "test_?.png"]
+}
+```
+
+Both keys are optional — leave them out (or empty) to use every wallpaper the
+active theme ships.
 
 ## How it works
 

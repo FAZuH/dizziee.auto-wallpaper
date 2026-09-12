@@ -4,6 +4,8 @@ var DEFAULTS = {
   enabled: true,
   intervalMinutes: 30,
   mode: "sequential",
+  includePatterns: [],
+  excludePatterns: [],
   lastChangeEpoch: 0,
   cycle: [],
   cycleIndex: 0,
@@ -27,12 +29,58 @@ function mode(value, fallback) {
   return value === MODE_SHUFFLE ? MODE_SHUFFLE : MODE_SEQUENTIAL
 }
 
+// A config value for includePatterns/excludePatterns is a list of glob
+// strings; anything else normalizes to an empty list (= no filtering).
+function patternList(value) {
+  if (!Array.isArray(value)) return []
+  var result = []
+  for (var i = 0; i < value.length; i++) {
+    if (typeof value[i] !== "string") continue
+    var pattern = value[i].trim()
+    if (pattern) result.push(pattern)
+  }
+  return result
+}
+
+// Compile a glob (*, ? wildcards; everything else literal, case-insensitive)
+// into an anchored RegExp. ponytail: no [...] character classes; add glob
+// parsing here if users ever ask for it.
+function globToRegex(pattern) {
+  var out = ""
+  for (var i = 0; i < pattern.length; i++) {
+    var ch = pattern.charAt(i)
+    if (ch === "*") out += ".*"
+    else if (ch === "?") out += "."
+    else out += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&")
+  }
+  return new RegExp("^" + out + "$", "i")
+}
+
+function anyMatch(name, patterns) {
+  for (var i = 0; i < patterns.length; i++)
+    if (globToRegex(patterns[i]).test(name)) return true
+  return false
+}
+
+// Filter parsed catalog rows { path, thumb } down to the active rotation.
+function filterCatalog(entries, includePatterns, excludePatterns) {
+  var include = patternList(includePatterns)
+  var exclude = patternList(excludePatterns)
+  if (include.length === 0 && exclude.length === 0) return entries
+  var result = []
+  for (var i = 0; i < entries.length; i++)
+    if (inRotation(entries[i].path, include, exclude)) result.push(entries[i])
+  return result
+}
+
 function normalize(raw) {
   var source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
   return {
     enabled: typeof source.enabled === "boolean" ? source.enabled : DEFAULTS.enabled,
     intervalMinutes: interval(source.intervalMinutes, DEFAULTS.intervalMinutes),
     mode: mode(source.mode, DEFAULTS.mode),
+    includePatterns: patternList(source.includePatterns),
+    excludePatterns: patternList(source.excludePatterns),
     lastChangeEpoch: integer(source.lastChangeEpoch, DEFAULTS.lastChangeEpoch),
     cycle: Array.isArray(source.cycle) ? source.cycle.slice() : [],
     cycleIndex: integer(source.cycleIndex, DEFAULTS.cycleIndex),
@@ -66,6 +114,16 @@ function wallpaperName(path) {
   base = base.replace(/[-_.]+/g, " ")
   return base.replace(/\b[a-z]/g, function(letter) { return letter.toUpperCase() })
     .replace(/\s+/g, " ").trim()
+}
+
+// Is this wallpaper in the active rotation given the include/exclude globs?
+function inRotation(path, includePatterns, excludePatterns) {
+  var name = String(path || "").replace(/\\/g, "/").split("/").pop()
+  var include = patternList(includePatterns)
+  var exclude = patternList(excludePatterns)
+  if (exclude.length > 0 && anyMatch(name, exclude)) return false
+  if (include.length > 0 && !anyMatch(name, include)) return false
+  return true
 }
 
 // Fisher-Yates shuffle. `rng` is optional to support deterministic tests.
