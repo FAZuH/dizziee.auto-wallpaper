@@ -22,6 +22,8 @@ Item {
   property bool enabled: true
   property int intervalMinutes: 30
   property string mode: Schedule.DEFAULTS.mode
+  property var includePatterns: []
+  property var excludePatterns: []
   property double lastChangeEpoch: Schedule.DEFAULTS.lastChangeEpoch
   property var cycle: []
   property int cycleIndex: 0
@@ -32,6 +34,7 @@ Item {
   property string currentThemeDisplay: "Unknown"
   property var catalogPaths: []
   property var wallpaperList: []
+  property var catalogEntries: []
   property string currentWallpaper: ""
   property double nowEpoch: 0
 
@@ -49,6 +52,8 @@ Item {
       enabled: root.enabled,
       intervalMinutes: root.intervalMinutes,
       mode: root.mode,
+      includePatterns: root.includePatterns,
+      excludePatterns: root.excludePatterns,
       lastChangeEpoch: root.lastChangeEpoch,
       cycle: root.cycle,
       cycleIndex: root.cycleIndex,
@@ -73,13 +78,36 @@ Item {
     root.enabled = config.enabled
     root.intervalMinutes = config.intervalMinutes
     root.mode = config.mode
+    root.includePatterns = config.includePatterns
+    root.excludePatterns = config.excludePatterns
     root.lastChangeEpoch = config.lastChangeEpoch
     root.cycle = config.cycle
     root.cycleIndex = config.cycleIndex
     root.cycleTheme = config.cycleTheme
     root.loaded = true
     root.nowEpoch = Date.now()
+    // Pattern changes re-derive the lists from the cached catalog; no shell
+    // re-run needed.
+    root.rebuildCatalog()
     Qt.callLater(root.reconcile)
+  }
+
+  // catalogPaths = wallpapers in the active rotation (used for scheduling and
+  // counts). wallpaperList = every catalog entry with an `inRotation` flag so
+  // the panel can show and toggle skipped wallpapers too.
+  function rebuildCatalog() {
+    var paths = []
+    var list = []
+    for (var i = 0; i < root.catalogEntries.length; i++) {
+      var entry = root.catalogEntries[i]
+      if (!entry.path) continue
+      var keep = Schedule.inRotation(entry.path, root.includePatterns, root.excludePatterns)
+      if (keep) paths.push(entry.path)
+      list.push({ path: entry.path, thumb: entry.thumb,
+                  name: Schedule.wallpaperName(entry.path), inRotation: keep })
+    }
+    root.catalogPaths = paths
+    root.wallpaperList = list
   }
 
   function saveConfig(patch) {
@@ -211,7 +239,8 @@ Item {
         patch.cycleIndex = next.cycleIndex
       }
       root.saveConfig(patch)
-      if (!root.currentProc.running) root.currentProc.running = true
+      // Ids aren't properties on root; updateCurrent() owns this Process.
+      root.updateCurrent()
       root.lastAction = "Wallpaper set to " + Schedule.wallpaperName(applied)
       root.lastError = ""
     } else {
@@ -272,17 +301,8 @@ Item {
         root.lastError = String(catalogError.text || "Could not list wallpapers").trim()
         return
       }
-      var parsed = Schedule.parseWallpaperCatalog(catalogOutput.text)
-      var paths = []
-      var list = []
-      for (var i = 0; i < parsed.length; i++) {
-        var entry = parsed[i]
-        if (!entry.path) continue
-        paths.push(entry.path)
-        list.push({ path: entry.path, thumb: entry.thumb, name: Schedule.wallpaperName(entry.path) })
-      }
-      root.catalogPaths = paths
-      root.wallpaperList = list
+      root.catalogEntries = Schedule.parseWallpaperCatalog(catalogOutput.text)
+      root.rebuildCatalog()
       Qt.callLater(root.reconcile)
     }
   }
