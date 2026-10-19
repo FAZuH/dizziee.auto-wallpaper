@@ -12,7 +12,7 @@ BarWidget {
   readonly property var service: bar && bar.shell
     ? bar.shell.serviceFor(root.moduleName) : null
   readonly property bool ready: service !== null
-  readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
+  property bool opened: false
   readonly property bool showError: ready && service.lastError !== ""
 
   // BarWidget does not derive implicit size from children; forward the
@@ -20,9 +20,22 @@ BarWidget {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  function open() { if (panelLoader.item) panelLoader.item.open() }
-  function close() { if (panelLoader.item) panelLoader.item.close() }
-  function toggle() { if (panelLoader.item) panelLoader.item.toggle() }
+  function open() {
+    if (!opened) {
+      opened = true
+      Qt.callLater(root.open)
+      return
+    }
+    if (panelLoader.item) {
+      root.injectPanel()
+      panelLoader.item.open()
+    }
+  }
+  function close() {
+    if (panelLoader.item) panelLoader.item.close()
+    opened = false
+  }
+  function toggle() { opened ? close() : open() }
   function applyNow() { if (ready) service.applyNext() }
 
   function injectPanel() {
@@ -39,7 +52,7 @@ BarWidget {
 
   Loader {
     id: panelLoader
-    active: true
+    active: root.opened
     source: Qt.resolvedUrl("Panel.qml")
     visible: false
     onLoaded: {
