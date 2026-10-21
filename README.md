@@ -10,7 +10,7 @@ Preview and automatically cycle the active Omarchy theme's wallpapers on a sched
 ## Installation
 
 ```sh
-omarchy plugin add https://github.com/JJDizz1L/dizziee.auto-wallpaper.git --enable
+omarchy plugin add https://github.com/FAZuH/dizziee.auto-wallpaper.git --enable
 ```
 
 ### Then place it in your bar layout with
